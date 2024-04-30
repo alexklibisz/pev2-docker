@@ -34,7 +34,7 @@ jobs:
         id: check
         continue-on-error: true
         run: |
-          (docker pull ghcr.io/alexklibisz/bdv2s3:$TAG \
+          (docker pull ghcr.io/alexklibisz/pev2-server:$TAG \
             && echo "exists=true" >> $GITHUB_OUTPUT) \
             || echo "exists=false" >> $GITHUB_OUTPUT
   publish:
