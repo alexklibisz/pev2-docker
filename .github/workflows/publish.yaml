@@ -44,7 +44,6 @@ jobs:
     if: ${{ needs.check.outputs.exists == 'false' }}
     runs-on: ubuntu-22.04
     permissions:
-      contents: write # To clone the repo and create a release.
       packages: write # To push the Docker image to ghcr.
     steps:
       - name: Clone
@@ -68,8 +67,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/pev2-server:${{ needs.check.outputs.tag }}
             ghcr.io/${{ github.repository_owner }}/pev2-server:latest
-      - name: Create Github Release
-        if: ${{ github.ref == 'refs/heads/main' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ needs.check.outputs.tag }} --generate-notes
