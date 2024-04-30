@@ -1,0 +1,75 @@
+name: "Publish"
+on:
+  schedule:
+    - cron: 14 3 * * *
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+      tag: ${{ steps.get-latest-tag.outputs.tag }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+        with:
+          repository: 'dalibo/explain.dalibo.com'
+          fetch-tags: true
+      - name: Get latest tag
+        id: get-latest-tag
+        run: |
+          TAG=$(git tag -l --sort=v:refname | tail -1)
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if latest tag has already been published
+        id: check
+        continue-on-error: true
+        run: |
+          (docker pull ghcr.io/alexklibisz/pev2-server:$TAG \
+            && echo "exists=true" >> $GITHUB_OUTPUT) \
+            || echo "exists=false" >> $GITHUB_OUTPUT
+  publish:
+    needs: check
+    if: ${{ needs.check.outputs.exists == 'false' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write # To clone the repo and create a release.
+      packages: write # To push the Docker image to ghcr.
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+        with:
+          repository: 'dalibo/explain.dalibo.com'
+          ref: ${{ needs.check.outputs.tag }}
+      - uses: docker/setup-qemu-action@v2
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pev2-server:${{ needs.check.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/pev2-server:latest
+      - name: Create Github Release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create ${{ needs.check.outputs.tag }} --generate-notes
