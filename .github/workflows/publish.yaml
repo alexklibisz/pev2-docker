@@ -41,7 +41,7 @@ jobs:
             || echo "exists=false" >> $GITHUB_OUTPUT
   publish:
     needs: check
-    if: ${{ needs.check.outputs.exists == 'false' }}
+    # if: ${{ needs.check.outputs.exists == 'false' }}
     runs-on: ubuntu-22.04
     permissions:
       packages: write # To push the Docker image to ghcr.
