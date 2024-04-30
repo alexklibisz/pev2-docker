@@ -38,7 +38,7 @@ jobs:
             && echo "exists=true" >> $GITHUB_OUTPUT) \
             || echo "exists=false" >> $GITHUB_OUTPUT
   publish:
-    depends_on: check
+    needs: check
     if: ${{ needs.check.outputs.exists == 'false' }}
     runs-on: ubuntu-22.04
     permissions:
